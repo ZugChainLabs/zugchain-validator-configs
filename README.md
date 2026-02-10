@@ -81,10 +81,22 @@ timedatectl status
 - `System clock synchronized: yes`
 - `NTP service: active`
 
-**IMPORTANT:** If running on WSL2, you may need to manually sync time after system sleep/hibernation:
+**WSL2 Clock Drift Warning:**
+
+> [!NOTE]
+> **Why WSL2 Requires Extra Attention**
+> 
+> WSL2 runs as a Hyper-V virtual machine with its own clock. Clock drift is **more common** on WSL2 because:
+> - **Windows Hibernation/Sleep:** When Windows resumes from sleep, WSL clock may freeze while Windows clock auto-corrects
+> - **VM Clock Skew:** Virtual machine clocks can drift from host system over time
+> - **Manual Sync Required:** Unlike native Linux, WSL doesn't always auto-sync after resume
+> 
+> **Native Linux** is less prone to this issue (systemd-timesyncd runs automatically), but can still experience drift in virtualized environments (VMware, VirtualBox) or if BIOS time is incorrect.
+
+If running on WSL2, manually sync time after system sleep/hibernation:
 
 ```bash
-# Force immediate sync
+# Force immediate sync (run after Windows resume from sleep)
 sudo hwclock -s
 sudo ntpdate -s time.nist.gov
 ```
@@ -296,14 +308,25 @@ screen -S validator_node
 
 Run the validator:
 
+> [!WARNING]
+> **CRITICAL: Configure Fee Recipient Address**
+> 
+> Without `--suggested-fee-recipient`, all block proposal rewards (transaction fees and MEV) will be sent to the **burn address (0x0000...0000)** and permanently lost. This parameter is separate from your withdrawal credentials.
+> 
+> - **Withdrawal Credentials:** Set during key generation (used when exiting validator)
+> - **Fee Recipient:** Set at runtime (receives block proposal rewards)
+
 ```bash
 validator \
   --datadir=$HOME/zugchain-data/consensus \
   --wallet-dir=$HOME/zugchain-data/consensus/wallet \
   --chain-config-file=$HOME/zugchain-data/config/config.yml \
   --beacon-rpc-provider=127.0.0.1:4000 \
+  --suggested-fee-recipient=0x1b4e99d2a838ee7b524f47a399c34af43a8fad80 \
   --accept-terms-of-use
 ```
+
+**Replace `0x1b4e99d2a838ee7b524f47a399c34af43a8fad80` with your own wallet address.**
 
 Enter your wallet password when prompted.
 
@@ -425,6 +448,32 @@ If on WSL2 and issue persists:
 wsl --shutdown
 # Then restart WSL and re-sync time
 ```
+
+### Problem: "fee recipient is the burn address" warning in logs
+
+**Symptoms:**
+- Repeated warnings: `WARN rpc/validator: fee recipient is the burn address`
+- Block proposal rewards are being lost
+
+**Root Cause:** Validator was started without `--suggested-fee-recipient` parameter.
+
+**Solution:**
+```bash
+# Stop validator
+screen -X -S validator_node quit
+
+# Restart with fee recipient configured
+screen -S validator_node
+validator \
+  --datadir=$HOME/zugchain-data/consensus \
+  --wallet-dir=$HOME/zugchain-data/consensus/wallet \
+  --chain-config-file=$HOME/zugchain-data/config/config.yml \
+  --beacon-rpc-provider=127.0.0.1:4000 \
+  --suggested-fee-recipient=YOUR_WALLET_ADDRESS \
+  --accept-terms-of-use
+```
+
+Replace `YOUR_WALLET_ADDRESS` with your actual Ethereum address (same address you used during key generation).
 
 ### Problem: "Running on Ethereum Mainnet" warning during key import
 
