@@ -96,7 +96,7 @@ After=network.target
 User=root
 ExecStart=/usr/bin/geth \\
     --datadir=${ZUG_DIR}/data/geth \\
-    --networkid=19024561 \\
+    --networkid=824642 \\
     --http --http.addr=0.0.0.0 --http.port=8545 \\
     --authrpc.addr=127.0.0.1 --authrpc.port=8551 \\
     --authrpc.jwtsecret=${ZUG_DIR}/data/jwt.hex \\
@@ -127,7 +127,7 @@ ExecStart=/usr/local/bin/beacon-chain \\
     --p2p-host-ip=${PUBLIC_IP} \\
     --p2p-tcp-port=13000 \\
     --p2p-udp-port=12000 \\
-    --min-sync-peers=1 \\
+    --min-sync-peers=0 \\
     --bootstrap-node="${BOOTSTRAP_NODE}"
 Restart=always
 RestartSec=5
