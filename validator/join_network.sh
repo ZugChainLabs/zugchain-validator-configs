@@ -9,6 +9,35 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+check_root() { if [[ $EUID -ne 0 ]]; then log_error "This script must be run as root"; exit 1; fi }
+
+#-------------------------------------------------------------------------------
+# INSTALL GETH
+#-------------------------------------------------------------------------------
+
+install_geth() {
+    echo -e "${GREEN}>>> Checking/Installing Geth (via PPA)${NC}"
+
+    if command -v geth &> /dev/null; then
+        log_info "Geth already installed"
+        return
+    fi
+
+    log_info "Adding Ethereum PPA..."
+    add-apt-repository -y ppa:ethereum/ethereum
+    apt-get update -qq
+
+    log_info "Installing Geth package..."
+    apt-get install -y ethereum
+
+    log_success "Geth installed"
+}
+
+
 # --- DIRECTORY CONFIGURATION (LOCAL) ---
 ZUG_DIR="/opt/zugchain"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -32,6 +61,9 @@ echo ""
 PUBLIC_IP=$(curl -s ifconfig.me)
 
 echo -e "${GREEN}>>> ZUG Chain Validator (Smart Install) Starting...${NC}"
+
+check_root
+
 
 # --- 1. ARCHITECTURE DETECTION ---
 ARCH=$(uname -m)
@@ -57,6 +89,10 @@ mkdir -p ${ZUG_DIR}/data/{geth,beacon,validators}
 BIN_SOURCE="${REPO_ROOT}/bin/${ARCH_DIR}"
 # Configs are taken from the config/ folder next to the script
 CONFIG_SOURCE="${SCRIPT_DIR}/config"
+
+# --- 2.5 DOWNLOAD/INSTALL GETH ---
+install_geth
+
 
 echo -e "${GREEN}>>> Copying files from local repository folders...${NC}"
 
@@ -124,6 +160,9 @@ ExecStart=/usr/local/bin/beacon-chain \\
     --jwt-secret=${ZUG_DIR}/data/jwt.hex \\
     --accept-terms-of-use \\
     --rpc-host=0.0.0.0 \\
+    --rpc-port=4000 \\
+    --grpc-gateway-host=0.0.0.0 \\
+    --grpc-gateway-port=3500 \\
     --p2p-host-ip=${PUBLIC_IP} \\
     --p2p-tcp-port=13000 \\
     --p2p-udp-port=12000 \\
@@ -148,7 +187,8 @@ ExecStart=/usr/local/bin/validator \\
     --chain-config-file=${ZUG_DIR}/config/config.yml \\
     --accept-terms-of-use \\
     --wallet-dir=${ZUG_DIR}/data/validators \\
-    --suggested-fee-recipient=${FEE_RECIPIENT}
+    --suggested-fee-recipient=${FEE_RECIPIENT} \\
+    --wallet-password-file=/opt/zugchain/data/validators/wallet-password.txt
 Restart=always
 RestartSec=5
 [Install]
