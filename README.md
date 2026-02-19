@@ -46,10 +46,7 @@ This repository is streamlined for validator operations only. Chain genesis and 
 
 Follow these steps to deploy your node and sync with the ZugChain network.
 
-### Prerequisites
-Ensure you have the following information from the Network Administrator or Documentation:
-*   **Bootnode ENODE:** The entry point for the execution layer P2P network.
-*   **Bootstrap ENR:** The entry point for the consensus layer P2P network.
+
 
 ### Step 1: Clone the Repository
 Clone this repository to your dedicated validator server.
