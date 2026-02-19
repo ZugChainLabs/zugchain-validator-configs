@@ -71,32 +71,62 @@ sudo ./join_network.sh
 
 ---
 
-## � Key Management & Activation
+## 🔐 Key Management & Activation
 
-Once your node is synchronized, you must import your validator keys to begin proposing blocks and attesting.
+To participate in the network, you must generate validator keys and import them into the lighthouse validator client. The validator service **does not** read raw JSON files directly; it requires an encrypted wallet database created through the import process.
 
-### Step 1: Upload Keystores
-Securely transfer your `keystore-m_...` JSON files and `password.txt` to the server (e.g., via SCP or SFTP) into a secure directory.
+### Step 1: Generate Keys
+Use the official **ZugChain Deposit CLI** to generate your validator keys (`keystore-m...json`) and `deposit_data...json`.
+*   **Tool:** [ZugChain Deposit CLI](https://github.com/ZugChainLabs/zugchain-deposit-cli)
+*   **Action:** Follow the instructions in the CLI repository to generate your keys. You will need the `keystore` JSON file and the password you used to encrypt it.
 
-### Step 2: Import Validator Keys
-Use the specific binary for your architecture to import the keys into the validator client.
+### Step 2: Prepare Keys on Server
+You need to get your `keystore` file and your password onto the validator server. Choose **one** of the following methods:
 
-**For x86_64:**
+#### Option A: File Transfer (SCP/SFTP)
+If you can transfer files to your server:
+1.  Create a temporary directory: `mkdir -p ~/zug_keys`
+2.  Upload your `keystore-m_....json` file to `~/zug_keys`.
+3.  Create a password file: `echo "YOUR_KEYSTORE_PASSWORD" > ~/zug_keys/password.txt`
+
+#### Option B: Manual Creation (Copy-Paste)
+If you only have terminal access:
+1.  Create the directory: `mkdir -p ~/zug_keys`
+2.  Create the keystore file:
+    ```bash
+    nano ~/zug_keys/keystore-m_12381_3600_0_0_0-1771503650.json  # (IMPORTANT: Use your actual keystore filename!)
+    # Paste the content of your keystore JSON here. Save (Ctrl+O) and Exit (Ctrl+X).
+    ```
+3.  Create the password file:
+    ```bash
+    echo "YOUR_KEYSTORE_PASSWORD" > ~/zug_keys/password.txt
+    ```
+
+### Step 3: Import Keys (Critical)
+Regardless of how you uploaded the files, you **must** run the import command. This encrypts your keys into the validator's native wallet database.
+
+**Run the Import Command:**
 ```bash
-./../bin/x86/validator accounts import \
-    --keys-dir=/path/to/uploaded_keystores \
-    --wallet-dir=/opt/zugchain/data/validators
+/usr/local/bin/validator accounts import \
+    --keys-dir=~/zug_keys \
+    --wallet-dir=/opt/zugchain/data/validators \
+    --account-password-file=~/zug_keys/password.txt
 ```
 
-**For ARM64:**
+**During this process:**
+1.  The tool will ask you to create a **Wallet Password** (this is different from your keystore password).
+2.  **IMMEDIATELY** save this new wallet password to the server, as the service needs it to auto-start:
+
 ```bash
-./../bin/arm64/validator accounts import \
-    --keys-dir=/path/to/uploaded_keystores \
-    --wallet-dir=/opt/zugchain/data/validators
+# Replace 'YOUR_NEW_WALLET_PASSWORD' with the password you just created
+echo "YOUR_NEW_WALLET_PASSWORD" > /opt/zugchain/data/validators/wallet-password.txt
 ```
 
-### Step 3: Start the Validator Service
-After successful import, start the validator process managed by systemd.
+> **⚠️ Why is this necessary?**
+> The `zugchain-validator` service is configured to read from the encrypted database at `/opt/zugchain/data/validators`. If you skip this import step or fail to save the `wallet-password.txt`, the service will fail with a "No accounts found" error.
+
+### Step 4: Start the Validator Service
+Once the keys are imported and the password file is in place, start the service:
 
 ```bash
 sudo systemctl start zugchain-validator
