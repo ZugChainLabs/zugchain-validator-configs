@@ -1,18 +1,25 @@
 # ⚡ ZugChain Validator Deployment Suite (Enterprise Edition)
 
-**ZugChain** is a high-performance, EVM-compatible Proof-of-Stake (PoS) blockchain designed for institutional-grade reliability and scalability. This repository provides the essential binaries, configurations, and automated deployment tools required to join the ZugChain network as a **Validator Node**.
+> [!WARNING]  
+> **Linux Exclusivity**  
+> This deployment suite and its tools are designed **exclusively for Linux environments** (Ubuntu 22.04 LTS or 24.04 LTS recommended). Do not attempt to run these scripts on Windows or macOS.
 
-This suite features **Auto-Architecture Detection**, ensuring seamless deployment on both **x86_64** (Intel/AMD) and **ARM64** (Apple Silicon, AWS Graviton) infrastructures by automatically utilizing the appropriate optimized binaries.
+Welcome to the **ZugChain** Validator Setup Guide! ZugChain is a high-performance, EVM-compatible Proof-of-Stake (PoS) blockchain designed for institutional-grade reliability.
+
+This repository provides everything you need to easily join the ZugChain network as a **Validator Node**. Whether you are an experienced DevOps engineer or setting up a node for the very first time, this guide will walk you through the process step-by-step.
+
+> [!TIP]
+> **Auto-Architecture Detection:** This suite automatically detects your server's hardware architecture.** Just run the scripts, and it will deploy the optimized binaries for either **x86_64** (Intel/AMD) or **ARM64** (Apple Silicon, AWS Graviton).
 
 ---
 
 ## 📋 Table of Contents
-1. [System Requirements](#-system-requirements)
-2. [Repository Architecture](#-repository-architecture)
-3. [Validator Setup Guide](#-validator-setup-guide)
-4. [Key Management & Activation](#-key-management--activation)
-5. [Operations & Monitoring](#-operations--monitoring)
-6. [Troubleshooting](#-troubleshooting)
+1. [🖥️ System Requirements](#️-system-requirements)
+2. [📛 Critical: Network & Firewall](#-critical-network--firewall)
+3. [🚀 Step-by-Step Setup Guide](#-step-by-step-setup-guide)
+4. [🔐 Key Management & Activation](#-key-management--activation)
+5. [🛠️ Operations & Monitoring](#️-operations--monitoring)
+6. [❓ Troubleshooting](#-troubleshooting)
 
 ---
 
@@ -22,111 +29,172 @@ Ideally suited for high-availability environments, ZugChain validators require r
 
 | Component | Minimum Specification | Recommended (Production) |
 | :--- | :--- | :--- |
-| **CPU** | 4 Cores | 8 Cores (AMD Ryzen 7000+ / Intel Xeon / Apple M-Series) |
+| **CPU** | 4 Cores | 8 Cores (AMD Ryzen 7000+ / Intel Xeon / ARM) |
 | **RAM** | 8 GB | 32 GB+ DDR5 |
 | **Storage** | 500 GB SSD | 2 TB NVMe SSD (High IOPS required) |
-| **OS** | Ubuntu 22.04 LTS | Ubuntu 24.04 LTS |
+| **OS** | Ubuntu 22.04 LTS | Ubuntu 24.04 LTS (Strictly Linux) |
 | **Network** | 100 Mbps Up/Down | 1 Gbps Fiber (Static IP Required) |
 
 ---
 
-## 📂 Repository Architecture
+## � Critical: Network & Firewall
 
-This repository is streamlined for validator operations only. Chain genesis and master node configurations are managed upstream.
+Before installing **ANYTHING**, you **MUST** open specific network ports. If these ports are closed, your node will have **zero peers** and will fail to synchronize with the blockchain.
 
-* **`validator/`**: Scripts and configuration templates for node deployment.
-* **`bin/`**: Pre-compiled, optimized core binaries (`geth`, `beacon-chain`, `validator`).
-    * `bin/x86`: For standard Intel/AMD servers.
-    * `bin/arm64`: For ARM-based infrastructure.
-* **`config/`**: Network genesis and consensus configuration files.
-
----
-
-## 🚀 Validator Setup Guide
-
-Follow these steps to deploy your node and sync with the ZugChain network.
-
-### ⚠️ Critical Step: Network & Firewall Configuration
-
-Before installation, you **MUST** open the following ports on both your **Operating System Firewall** (e.g., UFW) and your **Cloud Provider's Firewall** (AWS Security Group, Vultr Firewall, etc.).
-
-Failure to open these ports will result in **zero peers** and the node will not sync.
+You need to open these ports on your **Operating System Firewall** (e.g., `ufw` on Ubuntu) AND your **Cloud Provider's Firewall** (e.g., AWS Security Groups, Vultr Firewall rules).
 
 | Port | Protocol | Service | Purpose |
 | :--- | :--- | :--- | :--- |
-| **30303** | TCP & UDP | Execution (Geth) | P2P Peering (Required for Sync) |
-| **13000** | TCP | Consensus (Beacon) | P2P Peering (Required for Attestations) |
-| **12000** | UDP | Consensus (Beacon) | P2P Discovery (Required for Sync) |
-| **3500** | TCP | API (Lighthouse) | API (Required for Validator) |
+| **30303** | `TCP` & `UDP` | Execution (Geth) | P2P Peering (Required for Sync) |
+| **13000** | `TCP` | Consensus (Beacon) | P2P Peering (Required for Attestations) |
+| **12000** | `UDP` | Consensus (Beacon) | P2P Discovery (Required for Sync) |
+| **3500** | `TCP` | API (Lighthouse) | API (Required for Validator) |
 
+### Quick Firewall Setup (Ubuntu UFW)
 
+If you are using `ufw` on Ubuntu, copy and paste these commands one by one to configure your firewall correctly:
 
-**Quick Setup (Ubuntu UFW):**
 ```bash
 sudo ufw allow 30303
+```
+```bash
 sudo ufw allow 13000/tcp
+```
+```bash
 sudo ufw allow 3500/tcp
+```
+```bash
 sudo ufw allow 12000/udp
+```
+```bash
 sudo ufw enable
 ```
 
+---
 
+## 🚀 Step-by-Step Setup Guide
 
-### Step 1: Clone the Repository
-Clone this repository to your dedicated validator server.
+Follow these simple steps in order. Take your time and make sure each step completes successfully before moving to the next one.
+
+### Step 1: Install Geth (Execution Client)
+
+Before doing anything else, your Linux machine needs `geth` installed. Geth is the software that executes the smart contracts on the blockchain.
+
+Add the official Ethereum repository:
+```bash
+sudo add-apt-repository -y ppa:ethereum/ethereum
+```
+
+Update your package lists:
+```bash
+sudo apt-get update
+```
+
+Install the Ethereum package:
+```bash
+sudo apt-get install ethereum -y
+```
+
+**Verify the Installation:**
+Ensure `geth` was installed correctly by checking its version. It should return version details without any errors.
+```bash
+geth version
+```
+
+### Step 2: Clone the Repository
+
+Next, download this automated setup repository to your server.
 
 ```bash
 git clone https://github.com/ZugChainLabs/zugchain-validator-configs.git
+```
+
+Move into the downloaded directory:
+```bash
 cd zugchain-validator-configs
 ```
 
-### Step 2: Initialize the Node
-The initialization script will detect your system architecture and configure the execution and consensus clients.
+### Step 3: Initialize the Node
 
+Now, you will run the initialization script. This script automatically configures the execution and consensus clients based on your server's hardware.
+
+Navigate to the `validator` folder:
 ```bash
 cd validator
+```
+
+Grant execution permissions to the script:
+```bash
 chmod +x join_network.sh
+```
+
+Run the script with administrator privileges:
+```bash
 sudo ./join_network.sh
 ```
-*Follow the on-screen prompts to input the Bootnode and Bootstrap ENR information.*
+
 
 ---
 
 ## 🔐 Key Management & Activation
 
-To participate in the network, you must generate validator keys and import them into the lighthouse validator client. The validator service **does not** read raw JSON files directly; it requires an encrypted wallet database created through the import process.
+To earn rewards and participate in the network, you must generate validator keys and import them. The system needs these keys in a special encrypted wallet.
 
 ### Step 1: Generate Keys
-Use the official **ZugChain Deposit CLI** to generate your validator keys (`keystore-m...json`) and `deposit_data...json`.
-*   **Tool:** [ZugChain Deposit CLI](https://github.com/ZugChainLabs/zugchain-deposit-cli)
-*   **Action:** Follow the instructions in the CLI repository to generate your keys. You will need the `keystore` JSON file and the password you used to encrypt it.
 
-### Step 2: Prepare Keys on Server
-You need to get your `keystore` file and your password onto the validator server. Choose **one** of the following methods:
+You must generate your keys securely using the official CLI.
 
-#### Option A: File Transfer (SCP/SFTP)
-If you can transfer files to your server:
-1.  Create a temporary directory: `mkdir -p ~/zug_keys`
-2.  Upload your `keystore-m_....json` file to `~/zug_keys`.
-3.  Create a password file: `echo "YOUR_KEYSTORE_PASSWORD" > ~/zug_keys/password.txt`
+1. Go to the [ZugChain Deposit CLI Tool](https://github.com/ZugChainLabs/zugchain-deposit-cli).
+2. Follow their instructions to generate your validator keys.
+3. Keep the generated `keystore-m...json` file and the **password** you used for it very safe.
 
-#### Option B: Manual Creation (Copy-Paste)
-If you only have terminal access:
-1.  Create the directory: `mkdir -p ~/zug_keys`
-2.  Create the keystore file:
-    ```bash
-    nano ~/zug_keys/keystore-m_12381_3600_0_0_0-1771503650.json  # (IMPORTANT: Use your actual keystore filename!)
-    # Paste the content of your keystore JSON here. Save (Ctrl+O) and Exit (Ctrl+X).
-    ```
-3.  Create the password file:
-    ```bash
-    echo "YOUR_KEYSTORE_PASSWORD" > ~/zug_keys/password.txt
-    ```
+### Step 2: Transfer Keys to the Server
 
-### Step 3: Import Keys (Critical)
-Regardless of how you uploaded the files, you **must** run the import command. This encrypts your keys into the validator's native wallet database.
+You need to put your `keystore` file and your password onto your Linux server.
 
-**Run the Import Command:**
+> [!IMPORTANT]
+> The exact filename of your keystore will look something like `keystore-m_12381_3600_0_0_0-1771503650.json`. Always use your actual filename.
+
+Create a folder for your keys:
+```bash
+mkdir -p ~/zug_keys
+```
+
+**Choose ONE method to put your keys on the server:**
+
+<details>
+<summary><b>Option A: Copy & Paste via Terminal (Simplest)</b></summary>
+
+Open a new empty file in the terminal, using the **EXACT name** of your generated keystore file:
+```bash
+nano ~/zug_keys/keystore-m_...json
+```
+*(Replace `keystore-m_...json` with your actual filename! Paste the contents of your physical keystore file inside. Then press `Ctrl+O`, hit `Enter` to save, and press `Ctrl+X` to exit.)*
+
+Create your password file:
+```bash
+echo "YOUR_KEYSTORE_PASSWORD" > ~/zug_keys/password.txt
+```
+*(Make sure to replace `YOUR_KEYSTORE_PASSWORD` with your actual password!)*
+
+</details>
+
+<details>
+<summary><b>Option B: File Transfer (Advanced)</b></summary>
+
+Use SFTP or SCP to directly upload your `keystore-m_...json` file into the `~/zug_keys` directory on your server.
+
+Then create your password file:
+```bash
+echo "YOUR_KEYSTORE_PASSWORD" > ~/zug_keys/password.txt
+```
+</details>
+
+### Step 3: Import the Keys (Crucial Step)
+
+Now, you will import the uploaded keys into the validator's secure wallet. **Do not skip this!**
+
+Run this exact command (adjusting the filename if you uploaded it directly):
 ```bash
 /usr/local/bin/validator accounts import \
     --keys-dir=$HOME/zug_keys \
@@ -135,19 +203,19 @@ Regardless of how you uploaded the files, you **must** run the import command. T
 ```
 
 **During this process:**
-1.  The tool will ask you to create a **Wallet Password** (this is different from your keystore password).
-2.  **IMMEDIATELY** save this new wallet password to the server, as the service needs it to auto-start:
+1. The terminal will ask you to create a **NEW Wallet Password**. (This can be the same or different from your keystore password).
+2. **IMMEDIATELY** save this new wallet password to your server, so your validator can start automatically after reboots:
 
 ```bash
-# Replace 'YOUR_NEW_WALLET_PASSWORD' with the password you just created
 echo "YOUR_NEW_WALLET_PASSWORD" > /opt/zugchain/data/validators/wallet-password.txt
 ```
 
-> **⚠️ Why is this necessary?**
-> The `zugchain-validator` service is configured to read from the encrypted database at `/opt/zugchain/data/validators`. If you skip this import step or fail to save the `wallet-password.txt`, the service will fail with a "No accounts found" error.
+> [!CAUTION]
+> If you fail to save the `wallet-password.txt` file exactly as shown above, your Validator service will fail to restart automatically and will display a "No accounts found" error.
 
 ### Step 4: Start the Validator Service
-Once the keys are imported and the password file is in place, start the service:
+
+With your keys imported and password saved, you can officially start participating!
 
 ```bash
 sudo systemctl start zugchain-validator
@@ -155,41 +223,55 @@ sudo systemctl start zugchain-validator
 
 ---
 
-## 🛠 Operations & Monitoring
+## 🛠️ Operations & Monitoring
 
-We recommend proactively monitoring your node to avoid slashing penalties due to downtime.
+It is your responsibility to keep your node online. Prolonged downtime can result in slashing penalties.
 
-### Service Status
-Check the status of the three core services:
+### Checking Service Status
 
+Make sure everything is running smoothly with these commands:
+
+Check the **Execution Layer (Geth)**:
 ```bash
-# Execution Layer (Geth)
 systemctl status zugchain-geth
+```
 
-# Consensus Layer (Beacon Chain)
+Check the **Consensus Layer (Beacon Chain)**:
+```bash
 systemctl status zugchain-beacon
+```
 
-# Validator Client
+Check the **Validator Client**:
+```bash
 systemctl status zugchain-validator
 ```
 
-### Real-time Logs
-View live logs to debug issues or verify synchronization.
+*(Press `Q` on your keyboard to exit the status screen).*
 
+### Viewing Live Logs
+
+Logs help you see what the node is doing right now in real-time.
+
+Watch **Geth Logs**:
 ```bash
-# Execution Logs
 journalctl -fu zugchain-geth
+```
 
-# Consensus Logs (Check Peer Count & Sync Status)
+Watch **Beacon Chain Logs** (Use this to check your Sync Status and Peer Count):
+```bash
 journalctl -fu zugchain-beacon
+```
 
-# Validator Logs (Check Attestations & Proposals)
+Watch **Validator Logs** (Use this to check if you are Attesting correctly):
+```bash
 journalctl -fu zugchain-validator
 ```
 
-### Service Management
-To restart the entire stack safely:
+*(Press `Ctrl+C` to stop watching the logs).*
 
+### Restarting the Entire Stack
+
+If you make changes or need to refresh the whole node, run this combined restart command:
 ```bash
 sudo systemctl restart zugchain-geth zugchain-beacon zugchain-validator
 ```
@@ -198,21 +280,19 @@ sudo systemctl restart zugchain-geth zugchain-beacon zugchain-validator
 
 ## ❓ Troubleshooting
 
-### 1. Peer Count is Zero or Low
-*   Ensure firewall ports are open:
-    *   **30303** (TCP/UDP) - Execution P2P
-    *   **13000** (TCP) - Consensus P2P
-    *   **12000** (UDP) - Consensus P2P
-*   Verify the `Bootnode` address in `/opt/zugchain/config/config.toml`.
+### 1. "I have 0 Peers" or my peer count is very low
+* Your firewall is almost certainly blocking connections.
+* Double-check that ports **30303** (TCP/UDP), **13000** (TCP), and **12000** (UDP) are open on **both** Ubuntu `ufw` AND your cloud provider's web dashboard.
+* Verify your `Bootnode` address is correct in `/opt/zugchain/config/config.toml`.
 
-### 2. "Genesis Hash Mismatch"
-*   This indicates your configuration files are outdated.
-*   **Solution**: Pull the latest changes from the repository (`git pull`) and re-run the setup script.
+### 2. "Genesis Hash Mismatch" Error
+* This means your configuration files are outdated compared to the rest of the network.
+* **Fix**: Pull the latest code by running `git pull` from the `zugchain-validator-configs` directory, then re-run the `join_network.sh` script.
 
-### 3. Validator "Waiting for beacon chain to sync"
-*   The validator client cannot operate until the Beacon Chain is fully synchronized.
-*   Check sync status via `journalctl -fu zugchain-beacon`. Once synced, the validator will automatically begin its duties.
+### 3. Validator logs say: "Waiting for beacon chain to sync"
+* This is perfectly normal! The validator cannot do its job until the Beacon Chain has downloaded the entire history of the blockchain.
+* Just be patient. Keep an eye on the beacon logs (`journalctl -fu zugchain-beacon`). Once the sync reaches 100%, your validator will automatically start working.
 
 ---
 
-**ZugChain Labs** - *Powering the Future of Decentralized Finance.*
+**ZugChain Labs** • *Powering the Future of Decentralized Finance.*
