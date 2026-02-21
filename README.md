@@ -138,6 +138,9 @@ sudo ./join_network.sh
 
 ## 🔐 Key Management & Activation
 
+> [!IMPORTANT]
+> **Official Deposit Contract:** The ONLY official ZugChain Beacon Deposit Contract address is `0x00000000219ab540356cBB839Cbe05303d7705Fa`. Always verify this exact address before sending funds!
+
 To earn rewards and participate in the network, you must generate validator keys and import them. The system needs these keys in a special encrypted wallet.
 
 ### Step 1: Generate Keys
@@ -283,7 +286,6 @@ sudo systemctl restart zugchain-geth zugchain-beacon zugchain-validator
 ### 1. "I have 0 Peers" or my peer count is very low
 * Your firewall is almost certainly blocking connections.
 * Double-check that ports **30303** (TCP/UDP), **13000** (TCP), and **12000** (UDP) are open on **both** Ubuntu `ufw` AND your cloud provider's web dashboard.
-* Verify your `Bootnode` address is correct in `/opt/zugchain/config/config.toml`.
 
 ### 2. "Genesis Hash Mismatch" Error
 * This means your configuration files are outdated compared to the rest of the network.
