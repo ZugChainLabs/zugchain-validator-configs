@@ -261,21 +261,25 @@ systemctl status zugchain-validator
 
 ### Viewing Live Logs
 
-Logs help you see what the node is doing right now in real-time.
+Logs help you see what the node is doing right now in real-time. First, install `ccze` to colorize and format the logs:
+
+```bash
+sudo apt-get install ccze -y
+```
 
 Watch **Geth Logs**:
 ```bash
-journalctl -fu zugchain-geth
+journalctl -fu zugchain-geth | ccze -A
 ```
 
 Watch **Beacon Chain Logs** (Use this to check your Sync Status and Peer Count):
 ```bash
-journalctl -fu zugchain-beacon
+journalctl -fu zugchain-beacon | ccze -A
 ```
 
 Watch **Validator Logs** (Use this to check if you are Attesting correctly):
 ```bash
-journalctl -fu zugchain-validator
+journalctl -fu zugchain-validator | ccze -A
 ```
 
 *(Press `Ctrl+C` to stop watching the logs).*
