@@ -21,6 +21,7 @@ PENDING_FILE="${CONFIG_DIR}/.peer_refresh_pending"
 LAST_RESTART_FILE="${CONFIG_DIR}/.last_peer_restart_ts"
 LOCK_FILE="/var/lock/zugchain-peer-refresh.lock"
 MIN_RESTART_INTERVAL_SEC="${MIN_RESTART_INTERVAL_SEC:-900}"
+VALIDATOR_WAS_ACTIVE=0
 
 need_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -165,10 +166,19 @@ if [[ "${FORCE_RESTART}" != "--force" ]]; then
   fi
 fi
 
+if systemctl is-active --quiet zugchain-validator; then
+  VALIDATOR_WAS_ACTIVE=1
+fi
+
 echo "[INFO] Restarting zugchain-geth and zugchain-beacon..."
 systemctl restart zugchain-geth
 sleep 5
 systemctl restart zugchain-beacon
+
+if [[ "${VALIDATOR_WAS_ACTIVE}" -eq 1 ]]; then
+  echo "[INFO] Restarting zugchain-validator (was active before refresh)..."
+  systemctl restart zugchain-validator
+fi
 
 date +%s > "${LAST_RESTART_FILE}"
 rm -f "${PENDING_FILE}"
