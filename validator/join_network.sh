@@ -36,6 +36,7 @@ PEER_MANIFEST_URL="${PEER_MANIFEST_URL:-}"
 GETH_BOOTNODES="${GETH_BOOTNODES:-}"
 PRYSM_BOOTSTRAP_NODES="${PRYSM_BOOTSTRAP_NODES:-}"
 STATIC_ENODES="${STATIC_ENODES:-}"
+GETH_ANCIENT_DIR="${GETH_ANCIENT_DIR:-}"
 ALLOW_EMPTY_PEERS="${ALLOW_EMPTY_PEERS:-false}"
 FRESH_INSTALL="${FRESH_INSTALL:-false}"
 
@@ -299,6 +300,32 @@ init_execution() {
   fi
 }
 
+resolve_ancient_dir() {
+  if [[ -n "${GETH_ANCIENT_DIR}" ]]; then
+    if [[ -d "${GETH_ANCIENT_DIR}" ]]; then
+      log_ok "Using provided GETH_ANCIENT_DIR=${GETH_ANCIENT_DIR}"
+      return
+    fi
+    log_warn "Provided GETH_ANCIENT_DIR not found: ${GETH_ANCIENT_DIR}"
+    GETH_ANCIENT_DIR=""
+  fi
+
+  local candidate
+  for candidate in \
+    "${DATA_DIR}/geth/ancient" \
+    "${DATA_DIR}/geth/geth/chaindata/ancient" \
+    "${DATA_DIR}/geth/geth/ancient"
+  do
+    if [[ -d "${candidate}" ]]; then
+      GETH_ANCIENT_DIR="${candidate}"
+      log_ok "Detected geth ancient dir: ${GETH_ANCIENT_DIR}"
+      return
+    fi
+  done
+
+  log_info "No separate ancient directory detected"
+}
+
 write_peer_env() {
   cat > "${CONFIG_DIR}/network-peers.env" <<EOF
 PUBLIC_IP="${PUBLIC_IP}"
@@ -307,6 +334,7 @@ CHAIN_ID="${CHAIN_ID}"
 GETH_BOOTNODES="${GETH_BOOTNODES}"
 PRYSM_BOOTSTRAP_NODES="${PRYSM_BOOTSTRAP_NODES}"
 STATIC_ENODES="${STATIC_ENODES}"
+GETH_ANCIENT_DIR="${GETH_ANCIENT_DIR}"
 FEE_RECIPIENT="${FEE_RECIPIENT}"
 EOF
   chmod 600 "${CONFIG_DIR}/network-peers.env"
@@ -336,6 +364,10 @@ ARGS=(
 MERGED_BOOTNODES="$(printf '%s,%s\n' "${GETH_BOOTNODES:-}" "${STATIC_ENODES:-}" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | awk 'NF && !seen[$0]++' | paste -sd, -)"
 if [[ -n "${MERGED_BOOTNODES:-}" ]]; then
   ARGS+=(--bootnodes="${MERGED_BOOTNODES}")
+fi
+
+if [[ -n "${GETH_ANCIENT_DIR:-}" ]]; then
+  ARGS+=(--datadir.ancient="${GETH_ANCIENT_DIR}")
 fi
 
 exec geth "${ARGS[@]}"
@@ -512,6 +544,7 @@ main() {
   cleanup_and_prepare_dirs
   copy_chain_config
   init_execution
+  resolve_ancient_dir
   write_peer_env
   write_start_scripts
   write_systemd_services
