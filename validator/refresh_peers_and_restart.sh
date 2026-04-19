@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+log() {
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"
+}
+
 if [[ "${EUID}" -ne 0 ]]; then
   echo "ERROR: run as root (sudo)."
   exit 1
@@ -22,6 +26,7 @@ LAST_RESTART_FILE="${CONFIG_DIR}/.last_peer_restart_ts"
 LOCK_FILE="/var/lock/zugchain-peer-refresh.lock"
 MIN_RESTART_INTERVAL_SEC="${MIN_RESTART_INTERVAL_SEC:-900}"
 VALIDATOR_WAS_ACTIVE=0
+RESTART_TIMEOUT_SEC="${RESTART_TIMEOUT_SEC:-180}"
 
 need_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -49,12 +54,14 @@ trap cleanup EXIT
 
 if [[ "${MANIFEST_SOURCE}" =~ ^https?:// ]]; then
   need_cmd curl
+  log "[INFO] Fetching manifest from URL: ${MANIFEST_SOURCE}"
   curl -fsSL "${MANIFEST_SOURCE}" -o "${TMP_MANIFEST}"
 else
   if [[ ! -f "${MANIFEST_SOURCE}" ]]; then
     echo "ERROR: source manifest not found: ${MANIFEST_SOURCE}"
     exit 1
   fi
+  log "[INFO] Using local manifest file: ${MANIFEST_SOURCE}"
   cp -f "${MANIFEST_SOURCE}" "${TMP_MANIFEST}"
 fi
 
@@ -95,11 +102,11 @@ chmod 640 "${OUT_ENV}"
 
 if [[ "${PEER_CHANGED}" -eq 1 ]]; then
   date +%s > "${PENDING_FILE}"
-  echo "[INFO] Peer list changed, pending restart flagged."
+  log "[INFO] Peer list changed, pending restart flagged."
 fi
 
 if [[ "${PEER_CHANGED}" -eq 0 && ! -f "${PENDING_FILE}" && "${FORCE_RESTART}" != "--force" ]]; then
-  echo "[INFO] No peer change detected."
+  log "[INFO] No peer change detected."
   exit 0
 fi
 
@@ -170,17 +177,38 @@ if systemctl is-active --quiet zugchain-validator; then
   VALIDATOR_WAS_ACTIVE=1
 fi
 
-echo "[INFO] Restarting zugchain-geth and zugchain-beacon..."
-systemctl restart zugchain-geth
+log "[INFO] Restarting zugchain-geth and zugchain-beacon... (timeout=${RESTART_TIMEOUT_SEC}s each)"
+systemctl reset-failed zugchain-geth zugchain-beacon zugchain-validator 2>/dev/null || true
+
+if ! timeout "${RESTART_TIMEOUT_SEC}" systemctl restart zugchain-geth; then
+  log "[ERROR] zugchain-geth restart timed out/failed"
+  systemctl status zugchain-geth --no-pager || true
+  journalctl -u zugchain-geth -n 120 --no-pager || true
+  exit 1
+fi
+log "[INFO] zugchain-geth state: $(systemctl is-active zugchain-geth || true)"
+
 sleep 5
-systemctl restart zugchain-beacon
+if ! timeout "${RESTART_TIMEOUT_SEC}" systemctl restart zugchain-beacon; then
+  log "[ERROR] zugchain-beacon restart timed out/failed"
+  systemctl status zugchain-beacon --no-pager || true
+  journalctl -u zugchain-beacon -n 120 --no-pager || true
+  exit 1
+fi
+log "[INFO] zugchain-beacon state: $(systemctl is-active zugchain-beacon || true)"
 
 if [[ "${VALIDATOR_WAS_ACTIVE}" -eq 1 ]]; then
-  echo "[INFO] Restarting zugchain-validator (was active before refresh)..."
-  systemctl restart zugchain-validator
+  log "[INFO] Restarting zugchain-validator (was active before refresh)..."
+  if ! timeout "${RESTART_TIMEOUT_SEC}" systemctl restart zugchain-validator; then
+    log "[ERROR] zugchain-validator restart timed out/failed"
+    systemctl status zugchain-validator --no-pager || true
+    journalctl -u zugchain-validator -n 120 --no-pager || true
+    exit 1
+  fi
+  log "[INFO] zugchain-validator state: $(systemctl is-active zugchain-validator || true)"
 fi
 
 date +%s > "${LAST_RESTART_FILE}"
 rm -f "${PENDING_FILE}"
 
-echo "[OK] Peer config refreshed and services restarted."
+log "[OK] Peer config refreshed and services restarted."
