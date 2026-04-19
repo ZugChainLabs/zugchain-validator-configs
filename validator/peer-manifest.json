@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "chain_name": "zugchain-main",
+  "chain_id": "824642",
+  "network_id": "824642",
+  "updated_at": "2026-04-19T11:20:01Z",
+  "geth_bootnodes": [
+    "enode://9629bd41f0dada627bd90d2e0d0e7bf12a087ee573c68c8eb7f1a72d1044cb9e7f856660585104c5ef6284ff5eb7ee88cd08cd81f0d6c0ef7701936197a36a65@209.74.82.152:30303",
+    "enode://ff4fc0b1f98b742c57ba2c3bb2aebbc60d12c02b54a5438f12820d28ccac0ecb6ad21893196220ba568befd7bde4e0dd1b4ee05d0aa731ed5f29be89d3ee3618@104.207.64.233:30303"
+  ],
+  "prysm_bootstrap_nodes": [
+    "enr:-Mq4QKr_Vb3WLLaswqipa2domvlFC63t8_xGpfzvlHhheFskBF4pMQBnh5BidJjFspHLIZDCqFC6VSr-yFptgWNj4XmGAZ2hGF4ch2F0dG5ldHOIAAwAAAAAAACEZXRoMpAspToNIAAABABMBgAAAAAAgmlkgnY0gmlwhNFKUpiEcXVpY4IyyIlzZWNwMjU2azGhAz5UlXrifjzzam6J3SYPRkgmRD2Qzw8QiuJIsP2qjMgViHN5bmNuZXRzAIN0Y3CCMsiDdWRwgi7g",
+    "enr:-Mq4QIkU2sqHS6TTzt1JErMN8rUPFHRE63mjoagk_7DFXiSHTQLZPfKDqxtB11DLSt92DvwZE07xwEZm-K5_cOrk9zqGAZ2hELfrh2F0dG5ldHOIAAAAAGAAAACEZXRoMpAspToNIAAABABMBgAAAAAAgmlkgnY0gmlwhGjPQOmEcXVpY4IyyIlzZWNwMjU2azGhA7eGcG3QJP4UjvjyTyeEs1yf42Oiqf7tTk67lb5xFBWsiHN5bmNuZXRzD4N0Y3CCMsiDdWRwgi7g"
+  ],
+  "static_peers": [
+    
+  ]
+}
